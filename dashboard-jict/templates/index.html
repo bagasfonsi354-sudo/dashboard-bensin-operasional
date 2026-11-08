@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UJB Monitoring & Efisiensi JICT</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        body {
+            background-color: #F8F6F0; /* Soft Ivory */
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(3, 11, 30, 0.03) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(0, 0, 128, 0.04) 0px, transparent 50%);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F1EFE9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1E2942;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #000080;
+        }
+    </style>
+</head>
+<body class="text-slate-800 font-sans antialiased min-h-screen pb-16">
+
+    <!-- Header Navigation -->
+    <header class="bg-[#030B1E] border-b-2 border-[#000080] sticky top-0 z-30 shadow-md px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-4">
+            <div class="bg-gradient-to-br from-blue-900 to-slate-900 p-2 rounded-xl border border-blue-400/30 shadow-md flex items-center justify-center text-amber-400">
+                <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 20h20"></path>
+                    <path d="M5 20V8h14v12"></path>
+                    <path d="M5 12h14"></path>
+                    <path d="M2 6h8l2 2"></path>
+                    <rect x="9" y="14" width="6" height="4" fill="currentColor" opacity="0.3"></rect>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-extrabold text-[#FFFDF9] tracking-tight flex items-center gap-2">
+                    UJB Monitoring & Efisiensi JICT
+                    <span class="text-[10px] font-semibold bg-blue-900/80 text-blue-200 px-2 py-0.5 rounded-full border border-blue-700/50 uppercase tracking-widest hidden sm:inline-block">Terminal Fuel Ops</span>
+                </h1>
+                <p class="text-xs text-slate-300 mt-0.5 flex items-center gap-1.5">
+                    <i data-lucide="ship" class="w-3.5 h-3.5 text-cyan-400"></i> Sistem Pemantauan Konsumsi BBM & Produktivitas Unit Pelabuhan
+                </p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3 bg-[#0A1633] p-1.5 rounded-full border border-blue-900/60 shadow-inner">
+            <div id="status-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/60 text-emerald-300 text-xs font-medium border border-emerald-500/30">
+                <span id="status-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-slow"></span>
+                <span id="status-text">Terhubung ke API UJB</span>
+            </div>
+            
+            <div class="text-xs text-slate-300 px-3 hidden sm:block border-l border-blue-900/80">
+                Terakhir Diperbarui: <span id="last-update" class="font-semibold text-amber-300">-</span>
+            </div>
+
+            <button onclick="loadData(false)" class="p-2 text-slate-300 hover:text-white hover:bg-[#000080] rounded-full transition shadow" title="Refresh Data Sekarang">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 md:px-6 mt-8 space-y-8">
+
+        <!-- Banner Pelabuhan -->
+        <div class="bg-gradient-to-r from-[#030B1E] via-[#0A1633] to-[#000080] rounded-2xl p-6 text-white shadow-lg border border-blue-900/50 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="absolute -right-8 -bottom-8 text-white/5 pointer-events-none">
+                <i data-lucide="fuel" class="w-64 h-64"></i>
+            </div>
+            <div class="z-10 space-y-1">
+                <div class="flex items-center gap-2 text-amber-300 text-xs font-bold uppercase tracking-wider">
+                    <i data-lucide="container" class="w-4 h-4"></i> Jakarta International Container Terminal (JICT)
+                </div>
+                <h2 class="text-lg md:text-xl font-extrabold text-[#FFFDF9]">Dashboard Efisiensi Pengisian Bahan Bakar Terminal</h2>
+                <p class="text-xs text-slate-300 max-w-2xl">Integrasi otomatis data transaksi dispanser BBM dengan laporan produksi harian Head Truck & Unit Operasional Pelabuhan.</p>
+            </div>
+            <div class="z-10 shrink-0 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/15 flex items-center gap-3">
+                <div class="p-2 bg-amber-400/20 text-amber-300 rounded-lg"><i data-lucide="gauge" class="w-5 h-5"></i></div>
+                <div>
+                    <div class="text-[10px] text-slate-300 uppercase tracking-wider">Target Efisiensi</div>
+                    <div class="text-xs font-bold text-white">&lt; 0.85 L / Box Kontainer</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 1: Manajemen File Excel & Kontrol Filter -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-[#FFFDF9] p-5 rounded-2xl border border-amber-900/10 shadow-md space-y-4 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-bold text-[#030B1E] flex items-center gap-2 mb-3">
+                        <i data-lucide="file-spreadsheet" class="text-amber-600 w-4.5 h-4.5"></i>
+                        Unggah Laporan Excel Pengaya (Box)
+                    </h2>
+                    <form id="upload-form" class="space-y-3" onsubmit="uploadFiles(event)">
+                        <div class="flex flex-col gap-2.5">
+                            <input type="file" id="excelFiles" accept=".xls,.xlsx" multiple class="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#030B1E] file:text-amber-200 hover:file:bg-[#000080] cursor-pointer border border-slate-300/80 rounded-xl bg-white">
+                            <button type="submit" class="w-full bg-[#030B1E] hover:bg-[#000080] text-[#FFFDF9] px-4 py-2 rounded-xl text-xs font-semibold shadow transition flex items-center justify-center gap-1.5 border border-blue-900/40">
+                                <i data-lucide="upload-cloud" class="w-4 h-4 text-amber-300"></i> Sinkronkan File Lokal
+                            </button>
+                        </div>
+                    </form>
+                    <div id="statusMsg" class="text-xs font-medium mt-2"></div>
+                </div>
+                <div id="fileListContainer" class="text-xs space-y-1.5 max-h-32 overflow-y-auto mt-2 pt-2 border-t border-slate-200"></div>
+            </div>
+
+            <div class="lg:col-span-2 bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md flex flex-col justify-between space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                    <h2 class="text-sm font-bold text-[#030B1E] flex items-center gap-2">
+                        <i data-lucide="sliders" class="text-[#000080] w-4.5 h-4.5"></i>
+                        Filter Tanggal & Pencarian Unit Interaktif
+                    </h2>
+                    <button onclick="exportToCSV()" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl font-medium transition shadow flex items-center gap-1.5">
+                        <i data-lucide="download" class="w-4 h-4"></i> Ekspor CSV
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Dari Tanggal</label>
+                        <input type="date" id="startDate" onchange="renderDashboard()" class="w-full text-xs bg-white text-slate-800 border border-slate-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-[#000080] focus:outline-none shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sampai Tanggal</label>
+                        <input type="date" id="endDate" onchange="renderDashboard()" class="w-full text-xs bg-white text-slate-800 border border-slate-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-[#000080] focus:outline-none shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cari No Unit</label>
+                        <div class="relative">
+                            <input type="text" id="searchInput" placeholder="Contoh: HT 170, RTGC, BUS..." oninput="renderDashboard()" class="w-full text-xs bg-white text-slate-800 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 focus:ring-2 focus:ring-[#000080] focus:outline-none shadow-sm">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BAGIAN 1: KESELURUHAN UNIT & TREN -->
+        <div class="pt-2">
+            <h2 class="text-base md:text-lg font-extrabold text-[#030B1E] flex items-center gap-2.5">
+                <div class="p-1.5 bg-[#030B1E] rounded-lg text-amber-300 shadow"><i data-lucide="globe" class="w-4 h-4"></i></div> Ringkasan Keseluruhan Unit & Perbandingan Tren Operasional
+            </h2>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <div class="absolute -right-3 -bottom-3 text-white/5 group-hover:text-white/10 transition"><i data-lucide="activity" class="w-20 h-20"></i></div>
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Total Transaksi (All)</span>
+                <span id="globalTrx" class="text-2xl md:text-3xl font-extrabold text-[#FFFDF9] mt-2 block">0</span>
+            </div>
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <div class="absolute -right-3 -bottom-3 text-blue-400/10 group-hover:text-blue-400/20 transition"><i data-lucide="droplet" class="w-20 h-20"></i></div>
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Total Volume BBM (All)</span>
+                <span id="globalVol" class="text-2xl md:text-3xl font-extrabold text-blue-400 mt-2 block">0.0 L</span>
+            </div>
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <div class="absolute -right-3 -bottom-3 text-purple-400/10 group-hover:text-purple-400/20 transition"><i data-lucide="box" class="w-20 h-20"></i></div>
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Total Produksi Box (HT)</span>
+                <span id="globalBox" class="text-2xl md:text-3xl font-extrabold text-purple-300 mt-2 block">0 Box</span>
+            </div>
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <div class="absolute -right-3 -bottom-3 text-rose-400/10 group-hover:text-rose-400/20 transition"><i data-lucide="zap" class="w-20 h-20"></i></div>
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Rate Keseluruhan (L/Box)</span>
+                <span id="globalRate" class="text-2xl md:text-3xl font-extrabold text-amber-400 mt-2 block">0.00</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md">
+                <h3 class="text-xs font-bold text-[#030B1E] uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i data-lucide="pie-chart" class="w-4 h-4 text-[#000080]"></i> Perbandingan Konsumsi BBM: Head Truck vs Non-HT
+                </h3>
+                <div class="h-72 relative"><canvas id="chartCompareHtNonHt"></canvas></div>
+            </div>
+            <div class="bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md">
+                <h3 class="text-xs font-bold text-[#030B1E] uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i data-lucide="line-chart" class="w-4 h-4 text-emerald-600"></i> Tren Konsumsi BBM Harian Keseluruhan Unit
+                </h3>
+                <div class="h-72 relative"><canvas id="chartDailyTrend"></canvas></div>
+            </div>
+        </div>
+
+        <div class="bg-[#030B1E] border border-blue-900/50 p-5 rounded-2xl text-xs text-slate-200 space-y-1.5 shadow-md">
+            <h4 class="font-bold text-amber-300 text-sm flex items-center gap-2"><i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i> Evaluasi Tren Efisiensi BBM Keseluruhan</h4>
+            <p id="globalAnalysis" class="leading-relaxed text-slate-300">Memuat evaluasi tren operasional...</p>
+        </div>
+
+        <!-- BAGIAN 2: HEAD TRUCK (HT) TOP 15 -->
+        <div class="pt-6 border-t border-slate-300/80">
+            <h2 class="text-base md:text-lg font-extrabold text-[#030B1E] flex items-center gap-2.5">
+                <div class="p-1.5 bg-[#030B1E] rounded-lg text-amber-300 shadow"><i data-lucide="truck" class="w-4 h-4"></i></div> Kategori 1: Head Truck (HT) - Top 15 Unit Teratas
+            </h2>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Total Transaksi (HT)</span>
+                <span id="htTrx" class="text-2xl md:text-3xl font-extrabold text-[#FFFDF9] mt-2 block">0</span>
+            </div>
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Total Volume (HT)</span>
+                <span id="htVol" class="text-2xl md:text-3xl font-extrabold text-blue-400 mt-2 block">0.0 L</span>
+            </div>
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Total Box (HT)</span>
+                <span id="htBox" class="text-2xl md:text-3xl font-extrabold text-purple-300 mt-2 block">0 Box</span>
+            </div>
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Rate L/Box (HT)</span>
+                <span id="htRate" class="text-2xl md:text-3xl font-extrabold text-amber-400 mt-2 block">0.00</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md">
+                <h3 class="text-xs font-bold text-[#030B1E] uppercase tracking-wider mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-[#000080]"></i> Grafik Total Transaksi (Top 15 HT)</h3>
+                <div class="h-72 relative"><canvas id="chartHtTrx"></canvas></div>
+            </div>
+            <div class="bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md">
+                <h3 class="text-xs font-bold text-[#030B1E] uppercase tracking-wider mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-[#000080]"></i> Grafik Total Volume BBM (Top 15 HT)</h3>
+                <div class="h-72 relative"><canvas id="chartHtVol"></canvas></div>
+            </div>
+            <div class="bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md">
+                <h3 class="text-xs font-bold text-[#030B1E] uppercase tracking-wider mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-purple-700"></i> Grafik Total Box Produksi (Top 15 HT)</h3>
+                <div class="h-72 relative"><canvas id="chartHtBox"></canvas></div>
+            </div>
+            <div class="bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md">
+                <h3 class="text-xs font-bold text-[#030B1E] uppercase tracking-wider mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-rose-600"></i> Grafik Rasio Rate L/Box (Top 15 HT)</h3>
+                <div class="h-72 relative"><canvas id="chartHtRate"></canvas></div>
+            </div>
+        </div>
+
+        <div class="bg-[#030B1E] border border-blue-900/50 p-5 rounded-2xl text-xs text-slate-200 space-y-1.5 shadow-md">
+            <h4 class="font-bold text-amber-300 text-sm flex items-center gap-2"><i data-lucide="info" class="w-4 h-4 text-cyan-400"></i> Analisis Otomatis - Head Truck (Top 15)</h4>
+            <p id="htAnalysis" class="leading-relaxed text-slate-300">Memuat analisis...</p>
+        </div>
+
+        <div class="bg-[#FFFDF9] rounded-2xl border border-amber-900/10 shadow-md overflow-hidden">
+            <div class="p-4 border-b border-slate-200 bg-[#030B1E] text-white flex justify-between items-center">
+                <h3 class="text-sm font-bold flex items-center gap-2">
+                    <i data-lucide="table" class="w-4 h-4 text-amber-300"></i> Tabel Data Transaksi - Head Truck (Top 15)
+                </h3>
+            </div>
+            <div class="overflow-x-auto max-h-96">
+                <table class="w-full text-xs text-left text-slate-700">
+                    <thead class="text-[11px] uppercase bg-slate-100 text-slate-600 sticky top-0 z-10 border-b border-slate-200">
+                        <tr>
+                            <th class="px-4 py-3 font-semibold">Tanggal</th>
+                            <th class="px-4 py-3 font-semibold">Jam</th>
+                            <th class="px-4 py-3 font-semibold">No Unit</th>
+                            <th class="px-4 py-3 font-semibold">Volume (L)</th>
+                            <th class="px-4 py-3 font-semibold">Grade BBM</th>
+                            <th class="px-4 py-3 font-semibold">Total Box</th>
+                        </tr>
+                    </thead>
+                    <tbody id="htTableBody" class="divide-y divide-slate-200">
+                        <tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Memuat data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- BAGIAN 3: NON-HEAD TRUCK -->
+        <div class="pt-6 border-t border-slate-300/80">
+            <h2 class="text-base md:text-lg font-extrabold text-[#030B1E] flex items-center gap-2.5">
+                <div class="p-1.5 bg-[#030B1E] rounded-lg text-amber-300 shadow"><i data-lucide="cpu" class="w-4 h-4"></i></div> Kategori 2: Non-Head Truck (RTGC, ALAT, COM, OPS, BUS, ELF, MODUL)
+            </h2>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Total Transaksi (Non-HT)</span>
+                <span id="nonHtTrx" class="text-2xl md:text-3xl font-extrabold text-[#FFFDF9] mt-2 block">0</span>
+            </div>
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Total Volume (Non-HT)</span>
+                <span id="nonHtVol" class="text-2xl md:text-3xl font-extrabold text-blue-400 mt-2 block">0.0 L</span>
+            </div>
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Sub-Kategori Terbesar</span>
+                <span id="nonHtTopCat" class="text-lg md:text-xl font-extrabold text-purple-300 mt-2 block truncate">-</span>
+            </div>
+            <div class="bg-[#030B1E] p-5 rounded-2xl border border-blue-900/40 shadow-md relative overflow-hidden group hover:border-[#000080] transition">
+                <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">Estimasi Konsumsi</span>
+                <span id="nonHtRate" class="text-2xl md:text-3xl font-extrabold text-emerald-400 mt-2 block">Optimal</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md">
+                <h3 class="text-xs font-bold text-[#030B1E] uppercase tracking-wider mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-[#000080]"></i> Grafik Non-HT Per Unit Individu (Trx)</h3>
+                <div class="h-72 relative"><canvas id="chartNonHtUnitTrx"></canvas></div>
+            </div>
+            <div class="bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md">
+                <h3 class="text-xs font-bold text-[#030B1E] uppercase tracking-wider mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-[#000080]"></i> Grafik Non-HT Per Unit Individu (Volume L)</h3>
+                <div class="h-72 relative"><canvas id="chartNonHtUnitVol"></canvas></div>
+            </div>
+            <div class="bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md">
+                <h3 class="text-xs font-bold text-[#030B1E] uppercase tracking-wider mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-purple-700"></i> Grafik Non-HT Sub-Kategori (Trx)</h3>
+                <div class="h-72 relative"><canvas id="chartNonHtCatTrx"></canvas></div>
+            </div>
+            <div class="bg-[#FFFDF9] p-6 rounded-2xl border border-amber-900/10 shadow-md">
+                <h3 class="text-xs font-bold text-[#030B1E] uppercase tracking-wider mb-4 flex items-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4 text-purple-700"></i> Grafik Non-HT Sub-Kategori (Volume L)</h3>
+                <div class="h-72 relative"><canvas id="chartNonHtCatVol"></canvas></div>
+            </div>
+        </div>
+
+        <div class="bg-[#030B1E] border border-blue-900/50 p-5 rounded-2xl text-xs text-slate-200 space-y-1.5 shadow-md">
+            <h4 class="font-bold text-amber-300 text-sm flex items-center gap-2"><i data-lucide="info" class="w-4 h-4 text-cyan-400"></i> Analisis Otomatis - Non-Head Truck</h4>
+            <p id="nonHtAnalysis" class="leading-relaxed text-slate-300">Memuat analisis...</p>
+        </div>
+
+        <div class="bg-[#FFFDF9] rounded-2xl border border-amber-900/10 shadow-md overflow-hidden">
+            <div class="p-4 border-b border-slate-200 bg-[#030B1E] text-white flex justify-between items-center">
+                <h3 class="text-sm font-bold flex items-center gap-2">
+                    <i data-lucide="table" class="w-4 h-4 text-amber-300"></i> Tabel Data Transaksi - Non-Head Truck
+                </h3>
+            </div>
+            <div class="overflow-x-auto max-h-96">
+                <table class="w-full text-xs text-left text-slate-700">
+                    <thead class="text-[11px] uppercase bg-slate-100 text-slate-600 sticky top-0 z-10 border-b border-slate-200">
+                        <tr>
+                            <th class="px-4 py-3 font-semibold">Tanggal</th>
+                            <th class="px-4 py-3 font-semibold">Jam</th>
+                            <th class="px-4 py-3 font-semibold">No Unit</th>
+                            <th class="px-4 py-3 font-semibold">Sub-Kategori</th>
+                            <th class="px-4 py-3 font-semibold">Volume (L)</th>
+                            <th class="px-4 py-3 font-semibold">Grade BBM</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nonHtTableBody" class="divide-y divide-slate-200">
+                        <tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Memuat data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Detail Unit -->
+    <div id="unit-modal" class="fixed inset-0 bg-[#030B1E]/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[#FFFDF9] border border-amber-900/20 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                <h3 id="modal-unit-name" class="font-extrabold text-[#030B1E] text-base flex items-center gap-2">
+                    <i data-lucide="truck" class="w-5 h-5 text-[#000080]"></i> Detail Unit
+                </h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-[#030B1E] transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="modal-content" class="text-xs space-y-2.5 text-slate-700"></div>
+            <div class="pt-2 text-right">
+                <button onclick="closeModal()" class="bg-[#030B1E] hover:bg-[#000080] text-[#FFFDF9] px-4 py-2 rounded-xl text-xs font-semibold transition shadow">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        let rawApiData = [];
+        let charts = {};
+        let isInitialLoad = true;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            lucide.createIcons();
+            fetchFileList();
+            loadData(true);
+            setInterval(() => loadData(false), 10000);
+        });
+
+        function isHeadTruck(assetNo) {
+            if(!assetNo) return false;
+            let clean = assetNo.toUpperCase().trim();
+            return clean.startsWith('HT') || /^\d+$/.test(clean);
+        }
+
+        function getSubCategory(assetNo) {
+            if(!assetNo) return 'LAIN-LAIN';
+            let clean = assetNo.toUpperCase().trim();
+
+            if (clean.startsWith('RTGC') || (clean.startsWith('RTG') && !clean.startsWith('RANGGA')) || (!isNaN(clean) && parseInt(clean) <= 63)) {
+                return 'RTGC';
+            }
+            if (clean.startsWith('SL') || clean.startsWith('RS') || clean.startsWith('FRK') || clean.includes('TEREX')) {
+                return 'ALAT (SL/RS/FRK)';
+            }
+            if (clean.includes('COMPRESOR') || clean.includes('COM')) {
+                return 'COM (COMPRESOR)';
+            }
+            if (clean.startsWith('BUS')) return 'BUS';
+            if (clean.startsWith('ELF')) return 'ELF';
+            if (clean.startsWith('MODUL') || clean.startsWith('STG')) return 'MODUL';
+            if (clean.startsWith('B ') || clean.startsWith('POL') || clean.includes('TVC') || clean.includes('CAJ') || clean.includes('BAY') || clean.includes('UAU') || clean.includes('UWM') || clean.includes('UAV') || clean.includes('UBE') || clean.includes('GALMON') || clean.startsWith('RANGGA') || clean.startsWith('TRAGA') || clean.startsWith('HLX') || clean.startsWith('INV')) {
+                return 'OPS (OPERASIONAL)';
+            }
+            return 'OPS / LAINNYA';
+        }
+
+        async function fetchFileList() {
+            try {
+                const res = await fetch('/api/files');
+                const data = await res.json();
+                const container = document.getElementById('fileListContainer');
+                container.innerHTML = '';
+                if(data.files && data.files.length > 0) {
+                    data.files.forEach(f => {
+                        container.innerHTML += `
+                            <div class="flex justify-between items-center bg-white px-3 py-2 rounded-xl border border-slate-200">
+                                <span class="truncate max-w-[180px] text-slate-700 flex items-center gap-1.5"><i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-600"></i> ${f}</span>
+                                <button onclick="deleteFile('${f}')" class="text-rose-600 hover:text-rose-800 font-semibold text-[11px] transition">Hapus</button>
+                            </div>
+                        `;
+                    });
+                    lucide.createIcons();
+                } else {
+                    container.innerHTML = '<span class="text-slate-400 italic">Belum ada file pengaya.</span>';
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function deleteFile(filename) {
+            if(!confirm(`Hapus file ${filename}?`)) return;
+            await fetch('/api/file/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({filename})
+            });
+            fetchFileList();
+            loadData(false);
+        }
+
+        async function uploadFiles(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('excelFiles');
+            if (!fileInput.files.length) return;
+
+            const formData = new FormData();
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('file', fileInput.files[i]);
+            }
+
+            const statusEl = document.getElementById('statusMsg');
+            statusEl.style.color = '#000080';
+            statusEl.innerText = 'Mengunggah dan menyinkronkan file...';
+
+            try {
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                const result = await res.json();
+                if(result.status) {
+                    statusEl.style.color = '#16a34a';
+                    statusEl.innerText = result.message;
+                    fileInput.value = '';
+                    fetchFileList();
+                    loadData(false);
+                } else {
+                    statusEl.style.color = '#dc2626';
+                    statusEl.innerText = result.error;
+                }
+            } catch(err) {
+                console.error("Gagal unggah file:", err);
+            }
+        }
+
+        async function loadData(resetDate = false) {
+            try {
+                const res = await fetch('/api/data');
+                const json = await res.json();
+                
+                const badge = document.getElementById('status-badge');
+                const dot = document.getElementById('status-dot');
+                const text = document.getElementById('status-text');
+
+                if(json.status !== false && json.data) {
+                    rawApiData = json.data;
+                    badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/60 text-emerald-300 text-xs font-medium border border-emerald-500/30";
+                    dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse-slow";
+                    text.innerText = "Terhubung ke API UJB";
+
+                    if(resetDate && isInitialLoad && rawApiData.length > 0) {
+                        let dates = rawApiData.map(d => d.tgl).filter(Boolean).sort();
+                        if(dates.length > 0) {
+                            document.getElementById('startDate').value = dates[0];
+                            document.getElementById('endDate').value = dates[dates.length - 1];
+                        }
+                        isInitialLoad = false;
+                    }
+                    renderDashboard();
+                } else {
+                    badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-950/60 text-rose-300 text-xs font-medium border border-rose-500/30";
+                    dot.className = "w-2 h-2 rounded-full bg-rose-400";
+                    text.innerText = "Sesi/Koneksi Terputus";
+                }
+
+                const now = new Date();
+                document.getElementById('last-update').innerText = now.toLocaleTimeString('id-ID');
+            } catch(err) {
+                console.error("Gagal menarik data:", err);
+            }
+        }
+
+        function renderDashboard() {
+            let startD = document.getElementById('startDate').value;
+            let endD = document.getElementById('endDate').value;
+            let searchQ = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            let filtered = rawApiData.filter(item => {
+                let tgl = item.tgl || '';
+                let assetNo = item.asset_no || '';
+                if(startD && tgl < startD) return false;
+                if(endD && tgl > endD) return false;
+                if(searchQ && !assetNo.toLowerCase().includes(searchQ)) return false;
+                return true;
+            });
+
+            let globalTotalTrx = filtered.length;
+            let globalTotalVol = 0;
+            let globalTotalBox = 0;
+            let htTotalVolGlobal = 0;
+            let nonHtTotalVolGlobal = 0;
+            let htTotalTrxGlobal = 0;
+            let nonHtTotalTrxGlobal = 0;
+
+            let monthAgg = {};
+            let dailyAgg = {};
+
+            filtered.forEach(item => {
+                let tgl = item.tgl || '';
+                let asset = item.asset_no || '';
+                let vol = parseFloat(item.volume || 0);
+                let box = parseFloat(item.total_box || 0);
+
+                globalTotalVol += vol;
+                globalTotalBox += box;
+
+                if (isHeadTruck(asset)) {
+                    htTotalVolGlobal += vol;
+                    htTotalTrxGlobal += 1;
+                } else {
+                    nonHtTotalVolGlobal += vol;
+                    nonHtTotalTrxGlobal += 1;
+                }
+
+                if (tgl) {
+                    let mStr = tgl.substring(0, 7);
+                    if(!monthAgg[mStr]) monthAgg[mStr] = { vol: 0, trx: 0, box: 0 };
+                    monthAgg[mStr].vol += vol;
+                    monthAgg[mStr].trx += 1;
+                    monthAgg[mStr].box += box;
+
+                    dailyAgg[tgl] = (dailyAgg[tgl] || 0) + vol;
+                }
+            });
+
+            let globalRate = globalTotalBox > 0 ? (htTotalVolGlobal / globalTotalBox) : 0;
+
+            document.getElementById('globalTrx').innerText = globalTotalTrx.toLocaleString('id-ID');
+            document.getElementById('globalVol').innerText = `${globalTotalVol.toLocaleString('id-ID', {maximumFractionDigits: 1})} L`;
+            document.getElementById('globalBox').innerText = `${globalTotalBox.toLocaleString('id-ID')} Box`;
+            document.getElementById('globalRate').innerText = globalRate.toFixed(2);
+
+            renderGroupedBarChart('chartCompareHtNonHt', ['Volume BBM (L)', 'Total Transaksi'], [
+                { label: 'Head Truck (HT)', data: [htTotalVolGlobal, htTotalTrxGlobal], backgroundColor: '#000080' },
+                { label: 'Non-HT', data: [nonHtTotalVolGlobal, nonHtTotalTrxGlobal], backgroundColor: '#0284c7' }
+            ]);
+
+            let sortedDailyDates = Object.keys(dailyAgg).sort();
+            let dailyVolVals = sortedDailyDates.map(d => dailyAgg[d]);
+            renderBarChart('chartDailyTrend', sortedDailyDates, dailyVolVals, 'Volume Harian (L)', '#059669');
+
+            updateGlobalAnalysis(monthAgg);
+
+            let htItems = filtered.filter(item => isHeadTruck(item.asset_no));
+            let htUnitAgg = {};
+            htItems.forEach(item => {
+                let asset = item.asset_no || 'UNKNOWN';
+                if(!htUnitAgg[asset]) htUnitAgg[asset] = { trx: 0, vol: 0, box: 0 };
+                htUnitAgg[asset].trx += 1;
+                htUnitAgg[asset].vol += parseFloat(item.volume || 0);
+                htUnitAgg[asset].box += parseFloat(item.total_box || 0);
+            });
+
+            let sortedHtUnits = Object.keys(htUnitAgg).sort((a, b) => htUnitAgg[b].vol - htUnitAgg[a].vol).slice(0, 15);
+            let finalHtItems = htItems.filter(item => sortedHtUnits.includes(item.asset_no));
+
+            let htTotalTrx = finalHtItems.length;
+            let htTotalVol = 0;
+            let htTotalBox = 0;
+            let htTableHTML = '';
+
+            let htLabels = sortedHtUnits;
+            let htTrxVals = htLabels.map(u => htUnitAgg[u].trx);
+            let htVolVals = htLabels.map(u => htUnitAgg[u].vol);
+            let htBoxVals = htLabels.map(u => htUnitAgg[u].box);
+            let htRateVals = htLabels.map(u => htUnitAgg[u].box > 0 ? (htUnitAgg[u].vol / htUnitAgg[u].box) : 0);
+
+            finalHtItems.forEach(item => {
+                let tgl = item.tgl || '';
+                let jm = item.jam || item.jm || '';
+                let assetNo = item.asset_no || '';
+                let vol = parseFloat(item.volume || 0);
+                let grade = item.grade_bbm || 'BIO SOLAR';
+                let box = parseFloat(item.total_box || 0);
+
+                htTotalVol += vol;
+                htTotalBox += box;
+
+                htTableHTML += `
+                    <tr class="hover:bg-amber-500/10 cursor-pointer transition border-b border-slate-200" onclick='openModal(${JSON.stringify(item)})'>
+                        <td class="px-4 py-3 font-medium text-slate-800">${tgl}</td>
+                        <td class="px-4 py-3 text-slate-500">${jm}</td>
+                        <td class="px-4 py-3 font-bold text-[#030B1E]">${assetNo}</td>
+                        <td class="px-4 py-3 font-bold text-[#000080]">${vol.toLocaleString('id-ID')} L</td>
+                        <td class="px-4 py-3 text-slate-600">${grade}</td>
+                        <td class="px-4 py-3 font-bold text-purple-700">${box > 0 ? box + ' Box' : '-'}</td>
+                    </tr>
+                `;
+            });
+
+            if(finalHtItems.length === 0) {
+                htTableHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Tidak ada data transaksi Head Truck yang cocok.</td></tr>';
+            }
+
+            document.getElementById('htTrx').innerText = htTotalTrx.toLocaleString('id-ID');
+            document.getElementById('htVol').innerText = `${htTotalVol.toLocaleString('id-ID', {maximumFractionDigits: 1})} L`;
+            document.getElementById('htBox').innerText = `${htTotalBox.toLocaleString('id-ID')} Box`;
+            let htOverallRate = htTotalBox > 0 ? (htTotalVol / htTotalBox) : 0;
+            document.getElementById('htRate').innerText = htOverallRate.toFixed(2);
+            document.getElementById('htTableBody').innerHTML = htTableHTML;
+
+            renderBarChart('chartHtTrx', htLabels, htTrxVals, 'Total Transaksi', '#000080');
+            renderBarChart('chartHtVol', htLabels, htVolVals, 'Volume (L)', '#000080');
+            renderBarChart('chartHtBox', htLabels, htBoxVals, 'Box Produksi', '#7e22ce');
+            renderBarChart('chartHtRate', htLabels, htRateVals, 'Rate (L/Box)', '#e11d48');
+
+            updateHtAnalysis(htLabels, htVolVals, htRateVals);
+
+            let nonHtItems = filtered.filter(item => !isHeadTruck(item.asset_no));
+            let nonHtUnitAgg = {};
+            let nonHtCatAgg = {};
+
+            nonHtItems.forEach(item => {
+                let asset = item.asset_no || 'UNKNOWN';
+                let cat = getSubCategory(asset);
+                let vol = parseFloat(item.volume || 0);
+
+                if(!nonHtUnitAgg[asset]) nonHtUnitAgg[asset] = { trx: 0, vol: 0 };
+                nonHtUnitAgg[asset].trx += 1;
+                nonHtUnitAgg[asset].vol += vol;
+
+                if(!nonHtCatAgg[cat]) nonHtCatAgg[cat] = { trx: 0, vol: 0 };
+                nonHtCatAgg[cat].trx += 1;
+                nonHtCatAgg[cat].vol += vol;
+            });
+
+            let sortedNonHtUnits = Object.keys(nonHtUnitAgg).sort((a, b) => nonHtUnitAgg[b].vol - nonHtUnitAgg[a].vol).slice(0, 10);
+            let sortedNonHtCats = Object.keys(nonHtCatAgg).sort((a, b) => nonHtCatAgg[b].vol - nonHtCatAgg[a].vol);
+
+            let nonHtTotalTrx = nonHtItems.length;
+            let nonHtTotalVol = 0;
+            let nonHtTableHTML = '';
+
+            nonHtItems.forEach(item => {
+                let tgl = item.tgl || '';
+                let jm = item.jam || item.jm || '';
+                let assetNo = item.asset_no || '';
+                let cat = getSubCategory(assetNo);
+                let vol = parseFloat(item.volume || 0);
+                let grade = item.grade_bbm || 'BIO SOLAR';
+
+                nonHtTotalVol += vol;
+
+                nonHtTableHTML += `
+                    <tr class="hover:bg-amber-500/10 cursor-pointer transition border-b border-slate-200" onclick='openModal(${JSON.stringify(item)})'>
+                        <td class="px-4 py-3 font-medium text-slate-800">${tgl}</td>
+                        <td class="px-4 py-3 text-slate-500">${jm}</td>
+                        <td class="px-4 py-3 font-bold text-[#030B1E]">${assetNo}</td>
+                        <td class="px-4 py-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-[#030B1E] text-amber-200">${cat}</span></td>
+                        <td class="px-4 py-3 font-bold text-[#000080]">${vol.toLocaleString('id-ID')} L</td>
+                        <td class="px-4 py-3 text-slate-600">${grade}</td>
+                    </tr>
+                `;
+            });
+
+            if(nonHtItems.length === 0) {
+                nonHtTableHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Tidak ada data transaksi Non-Head Truck yang cocok.</td></tr>';
+            }
+
+            let topCatName = sortedNonHtCats.length > 0 ? sortedNonHtCats[0] : '-';
+
+            document.getElementById('nonHtTrx').innerText = nonHtTotalTrx.toLocaleString('id-ID');
+            document.getElementById('nonHtVol').innerText = `${nonHtTotalVol.toLocaleString('id-ID', {maximumFractionDigits: 1})} L`;
+            document.getElementById('nonHtTopCat').innerText = topCatName;
+            document.getElementById('nonHtTableBody').innerHTML = nonHtTableHTML;
+
+            renderBarChart('chartNonHtUnitTrx', sortedNonHtUnits, sortedNonHtUnits.map(u => nonHtUnitAgg[u].trx), 'Transaksi', '#000080');
+            renderBarChart('chartNonHtUnitVol', sortedNonHtUnits, sortedNonHtUnits.map(u => nonHtUnitAgg[u].vol), 'Volume (L)', '#000080');
+            renderBarChart('chartNonHtCatTrx', sortedNonHtCats, sortedNonHtCats.map(c => nonHtCatAgg[c].trx), 'Transaksi', '#7e22ce');
+            renderBarChart('chartNonHtCatVol', sortedNonHtCats, sortedNonHtCats.map(c => nonHtCatAgg[c].vol), 'Volume (L)', '#7e22ce');
+
+            updateNonHtAnalysis(topCatName, nonHtCatAgg, nonHtTotalVol);
+            lucide.createIcons();
+        }
+
+        function renderBarChart(canvasId, labels, dataVals, labelName, colorHex) {
+            if (charts[canvasId]) charts[canvasId].destroy();
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            charts[canvasId] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: labelName,
+                        data: dataVals,
+                        backgroundColor: colorHex,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                        y: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: 'rgba(0, 0, 0, 0.05)' } }
+                    }
+                }
+            });
+        }
+
+        function renderGroupedBarChart(canvasId, labels, datasets) {
+            if (charts[canvasId]) charts[canvasId].destroy();
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            charts[canvasId] = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#030B1E', font: { size: 11, weight: 'bold' } } } },
+                    scales: {
+                        x: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                        y: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: 'rgba(0, 0, 0, 0.05)' } }
+                    }
+                }
+            });
+        }
+
+        function updateGlobalAnalysis(monthAgg) {
+            let keys = Object.keys(monthAgg).sort();
+            let el = document.getElementById('globalAnalysis');
+            if(keys.length === 0) {
+                el.innerText = "Belum ada data transaksi yang cukup untuk dianalisis dalam rentang ini.";
+                return;
+            }
+            let latestKey = keys[keys.length - 1];
+            let latestData = monthAgg[latestKey];
+            let text = `Berdasarkan data operasional terpilih, aktivitas transaksi terkonsentrasi pada bulan ${latestKey} dengan total volume mencapai ${latestData.vol.toLocaleString('id-ID', {maximumFractionDigits:1})} Liter dari ${latestData.trx} pengisian.`;
+            if(keys.length >= 2) {
+                let prevKey = keys[keys.length - 2];
+                let prevData = monthAgg[prevKey];
+                let diffVol = latestData.vol - prevData.vol;
+                let pct = prevData.vol > 0 ? ((diffVol / prevData.vol) * 100).toFixed(1) : 0;
+                text += ` Dibandingkan bulan sebelumnya (${prevKey}), terjadi ${diffVol >= 0 ? 'peningkatan' : 'penurunan'} volume BBM sebesar ${Math.abs(pct)}%.`;
+            }
+            el.innerText = text;
+        }
+
+        function updateHtAnalysis(labels, volVals, rateVals) {
+            let el = document.getElementById('htAnalysis');
+            if(labels.length === 0) {
+                el.innerText = "Tidak ada data Head Truck yang tersedia.";
+                return;
+            }
+            let topUnit = labels[0];
+            let topVol = volVals[0];
+            el.innerText = `Unit Head Truck dengan konsumsi BBM tertinggi adalah ${topUnit} dengan total volume ${topVol.toLocaleString('id-ID', {maximumFractionDigits:1})} Liter. Pastikan pemeliharaan berkala dilakukan pada unit dengan rasio konsumsi tinggi untuk menjaga efisiensi operasional JICT.`;
+        }
+
+        function updateNonHtAnalysis(topCat, catAgg, totalVol) {
+            let el = document.getElementById('nonHtAnalysis');
+            if(totalVol === 0) {
+                el.innerText = "Tidak ada data transaksi Non-Head Truck.";
+                return;
+            }
+            let topCatVol = catAgg[topCat] ? catAgg[topCat].vol : 0;
+            let pct = ((topCatVol / totalVol) * 100).toFixed(1);
+            el.innerText = `Sub-kategori ${topCat} mendominasi pemakaian BBM Non-HT dengan total konsumsi mencapai ${topCatVol.toLocaleString('id-ID', {maximumFractionDigits:1})} Liter atau sekitar ${pct}% dari keseluruhan volume Non-Head Truck.`;
+        }
+
+        function openModal(item) {
+            document.getElementById('modal-unit-name').innerText = `Detail Unit: ${item.asset_no || 'N/A'}`;
+            document.getElementById('modal-content').innerHTML = `
+                <div class="p-3.5 bg-[#030B1E] text-white rounded-xl space-y-2 border border-blue-900/40">
+                    <p class="flex justify-between border-b border-blue-900/60 pb-1.5"><strong class="text-slate-400">Tanggal:</strong> <span class="text-white">${item.tgl || '-'}</span></p>
+                    <p class="flex justify-between border-b border-blue-900/60 pb-1.5"><strong class="text-slate-400">Jam:</strong> <span class="text-white">${item.jam || item.jm || '-'}</span></p>
+                    <p class="flex justify-between border-b border-blue-900/60 pb-1.5"><strong class="text-slate-400">Nomor Unit:</strong> <span class="text-amber-300 font-bold">${item.asset_no || '-'}</span></p>
+                    <p class="flex justify-between border-b border-blue-900/60 pb-1.5"><strong class="text-slate-400">Volume BBM:</strong> <span class="text-blue-400 font-semibold">${item.volume || 0} Liter</span></p>
+                    <p class="flex justify-between border-b border-blue-900/60 pb-1.5"><strong class="text-slate-400">Grade BBM:</strong> <span class="text-white">${item.grade_bbm || 'BIO SOLAR'}</span></p>
+                    <p class="flex justify-between"><strong class="text-slate-400">Total Box:</strong> <span class="text-purple-300 font-semibold">${item.total_box || 0} Box</span></p>
+                </div>
+            `;
+            document.getElementById('unit-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('unit-modal').classList.add('hidden');
+        }
+
+        function exportToCSV() {
+            if(!rawApiData.length) return alert("Tidak ada data untuk diekspor!");
+            let csv = 'Tanggal,Jam,No Unit,Volume (L),Grade BBM,Total Box\n';
+            rawApiData.forEach(r => {
+                csv += `"${r.tgl || ''}","${r.jam || r.jm || ''}","${r.asset_no || ''}","${r.volume || 0}","${r.grade_bbm || ''}","${r.total_box || 0}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `Laporan_UJB_JICT_${new Date().toISOString().slice(0,10)}.csv`);
+            a.click();
+        }
+    </script>
+</body>
+</html>
